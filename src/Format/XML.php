@@ -2,8 +2,8 @@
 
 namespace App\Format;
 
-class XML extends BaseFormat {
-  public function convert(){
+class XML extends BaseFormat implements NamedFormatInterface, FormatInterface {
+  public function convert(): string {
     $result = '';
 
     foreach ($this->data as $key => $value) {
@@ -11,5 +11,9 @@ class XML extends BaseFormat {
     }
 
     return htmlspecialchars($result);
+  }
+
+  public function getName() {
+    return 'XML';
   }
 }
