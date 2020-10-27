@@ -2,86 +2,37 @@
 
 namespace App;
 
-use App\Format\{JSON,XML,YAML};
-use App\Format\FormatInterface;
-use App\Annotations\Route;
+use Symfony\Bundle\FrameworkBundle\Kernel\MicroKernelTrait;
+use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
+use Symfony\Component\HttpKernel\Kernel as BaseKernel;
+use Symfony\Component\Routing\Loader\Configurator\RoutingConfigurator;
 
-use Doctrine\Common\Annotations\AnnotationReader;
-use Doctrine\Common\Annotations\AnnotationRegistry;
+class Kernel extends BaseKernel
+{
+    use MicroKernelTrait;
 
-class Kernel {
-  private $container;
-  private $routes = [];
+    protected function configureContainer(ContainerConfigurator $container): void
+    {
+        $container->import('../config/{packages}/*.yaml');
+        $container->import('../config/{packages}/'.$this->environment.'/*.yaml');
 
-  public function __construct(){
-    $this->container = new Container();
-  }
-
-  public function getContainer(): Container {
-    return $this->container;
-  }
-
-  public function boot() {
-    $this->bootContainer($this->container);
-  }
-
-  private function bootContainer(Container $container) {
-    $container->addService('format.json', function() use ($container) {
-        return new JSON();
-    });
-
-    $container->addService('format.xml', function() use ($container) {
-        return new XML();
-    });
-
-    $container->addService('format', function() use ($container) {
-        return $container->getService('format.json');
-    }, FormatInterface::class);
-
-    $container->loadServices('App\\Service');
-
-    AnnotationRegistry::registerLoader('class_exists');
-    $reader = new AnnotationReader();
-
-    $routes = [];
-
-    $container->loadServices(
-      'App\\Controller',
-      function (string $serviceName, \ReflectionClass $class) use ($reader, &$routes) {
-        $route = $reader->getClassAnnotation($class, Route::class);
-
-        if(!$route) {
-          return;
+        if (is_file(\dirname(__DIR__).'/config/services.yaml')) {
+            $container->import('../config/services.yaml');
+            $container->import('../config/{services}_'.$this->environment.'.yaml');
+        } elseif (is_file($path = \dirname(__DIR__).'/config/services.php')) {
+            (require $path)($container->withPath($path), $this);
         }
-
-        $baseRoute = $route->route;
-        foreach($class->getMethods() as $method){
-          $route = $reader->getMethodAnnotation($method, Route::class);
-
-          if (!$route) {
-            continue;
-          }
-
-          $routes[str_replace('//', '/', $baseRoute . $route->route)] = [
-            'service' => $serviceName,
-            'method' => $method->getName()
-          ];
-        }
-      }
-    );
-
-    $this->routes = $routes;
-  }
-
-  public function handleRequest() {
-    $uri = $_SERVER['REQUEST_URI'];
-
-    if(isset($this->routes[$uri])) {
-      $route = $this->routes[$uri];
-      $response = $this->container->getService($route['service'])
-        ->{$route['method']}();
-      echo $response;
-      die;
     }
-  }
+
+    protected function configureRoutes(RoutingConfigurator $routes): void
+    {
+        $routes->import('../config/{routes}/'.$this->environment.'/*.yaml');
+        $routes->import('../config/{routes}/*.yaml');
+
+        if (is_file(\dirname(__DIR__).'/config/routes.yaml')) {
+            $routes->import('../config/routes.yaml');
+        } elseif (is_file($path = \dirname(__DIR__).'/config/routes.php')) {
+            (require $path)($routes->withPath($path), $this);
+        }
+    }
 }
