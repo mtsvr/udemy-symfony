@@ -6,15 +6,22 @@ class Container {
   private $services = [];
   private $aliases = [];
 
-  public function addService(string $name, \Closure $closure, ?string $alias = null): void{
-    $this->services[$name] = $closure;
-    if($alias) {
-      $this->addAlias($alias, $name);
-    }
+  public function addService(
+      string $name,
+      \Closure $closure,
+      ?string $alias = null
+  ): void
+  {
+      $this->services[$name] = $closure;
+
+      if ($alias) {
+          $this->addAlias($alias, $name);
+      }
   }
 
-  public function addAlias(string $alias, string $service): void {
-    $this->aliases[$alias] = $service;
+  public function addAlias(string $alias, string $service): void
+  {
+      $this->aliases[$alias] = $service;
   }
 
   public function hasService(string $name): bool {
@@ -37,8 +44,9 @@ class Container {
     return $this->services[$name];
   }
 
-  public function getAlias(string $name) {
-    $this->getService($this->aliases[$name]);
+  public function getAlias(string $name)
+  {
+      return $this->getService($this->aliases[$name]);
   }
 
   public function getServices(): array {
@@ -68,7 +76,7 @@ class Container {
 
       $serviceParameters = [];
       foreach($parameters as $parameter){
-        $type = $parameter->getType()->getName();
+        $type = (string)$parameter->getType()->getName();
 
         if($this->hasService($type) || $this->hasAlias($type)){
           $serviceParameters[] = $this->getService($type) ?? $this->getAlias($type);
@@ -79,11 +87,11 @@ class Container {
         }
       }
 
-      $this->addService($serviceName, function() use ($serviceName, $serviceParameters){
-        foreach($serviceParameters as &$serviceParameter){
-          if($serviceParameter instanceof \Closure){
-            $serviceParameter = $serviceParameter();
-          }
+      $this->addService($serviceName, function () use ($serviceName, $serviceParameters) {
+        foreach ($serviceParameters as &$serviceParameter) {
+            if ($serviceParameter instanceof \Closure) {
+                $serviceParameter = $serviceParameter();
+            }
         }
         return new $serviceName(...$serviceParameters);
       });
